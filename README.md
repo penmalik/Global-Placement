@@ -149,7 +149,7 @@ jupyter notebook notebook/global_placement.ipynb
 
 ## 📈 Next Steps
 
-- [ ] Build a simple scoring pipeline to run on new customer data
+- [ ] Build a simple placement and salary prediction pipeline to run on new student data
 
 ---
 
