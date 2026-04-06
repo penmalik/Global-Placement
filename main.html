@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Placement Predictor</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --border: #1e1e2e;
+      --accent: #00e5a0;
+      --accent2: #5b8fff;
+      --muted: #3a3a52;
+      --text: #e8e8f0;
+      --text-dim: #7a7a9a;
+      --danger: #ff5f6d;
+      --card: #13131f;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 229, 160, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 160, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    /* Header */
+    header {
+      margin-bottom: 48px;
+      animation: fadeDown 0.6s ease both;
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 4px 10px;
+      border-radius: 2px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+
+    h1 span {
+      color: var(--accent);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    /* Form card */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 36px;
+      margin-bottom: 24px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .card:nth-child(2) {
+      animation-delay: 0.1s;
+    }
+
+    .card:nth-child(3) {
+      animation-delay: 0.2s;
+    }
+
+    .section-label {
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .grid.three {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .grid.full {
+      grid-template-columns: 1fr;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    input,
+    select {
+      background: var(--surface);
+      border: 1px solid var(--muted);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      padding: 10px 14px;
+      width: 100%;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 229, 160, 0.08);
+    }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a7a9a' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+
+    input::placeholder {
+      color: var(--muted);
+    }
+
+    /* Range input */
+    .range-wrap {
+      position: relative;
+    }
+
+    input[type="range"] {
+      padding: 0;
+      height: 4px;
+      border: none;
+      background: var(--muted);
+      border-radius: 2px;
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+
+    .range-val {
+      position: absolute;
+      right: 0;
+      top: -22px;
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* Submit button */
+    .btn {
+      width: 100%;
+      padding: 16px;
+      background: var(--accent);
+      color: #0a0a0f;
+      border: none;
+      border-radius: 4px;
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: transform 0.15s, opacity 0.15s, box-shadow 0.2s;
+      margin-top: 8px;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(0, 229, 160, 0.25);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Result panel */
+    #result {
+      display: none;
+      animation: fadeUp 0.4s ease both;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .result-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .result-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+    }
+
+    .result-box.placement::before {
+      background: var(--accent2);
+    }
+
+    .result-box.salary::before {
+      background: var(--accent);
+    }
+
+    .result-label {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+
+    .result-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .result-value.placed {
+      color: var(--accent);
+    }
+
+    .result-value.not-placed {
+      color: var(--danger);
+    }
+
+    .result-value.salary-val {
+      color: var(--accent2);
+    }
+
+    .result-sub {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 8px;
+    }
+
+    /* Probability bar */
+    .prob-bar-wrap {
+      margin-top: 12px;
+      height: 4px;
+      background: var(--muted);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .prob-bar {
+      height: 100%;
+      border-radius: 2px;
+      background: var(--accent2);
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0, 229, 160, 0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    /* Error */
+    .error-box {
+      background: rgba(255, 95, 109, 0.08);
+      border: 1px solid rgba(255, 95, 109, 0.3);
+      border-radius: 4px;
+      padding: 14px 18px;
+      color: var(--danger);
+      font-size: 13px;
+    }
+
+    @media (max-width: 600px) {
+
+      .grid,
+      .grid.three,
+      .result-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card {
+        padding: 24px 20px;
+      }
+    }
+
+    @keyframes fadeDown {
+      from {
+        opacity: 0;
+        transform: translateY(-16px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrapper">
+
+    <header>
+      <div class="tag">ML · Random Forest</div>
+      <h1>Global <span>Placement</span><br />Predictor</h1>
+      <p class="subtitle">Enter student profile details to predict placement outcome and estimated salary.</p>
+    </header>
+
+    <!-- Academic -->
+    <div class="card">
+      <div class="section-label">Academic Performance</div>
+      <div class="grid three">
+        <div class="field">
+          <label>CGPA</label>
+          <input type="number" id="cgpa" placeholder="e.g. 7.5" min="0" max="10" step="0.01" />
+        </div>
+        <div class="field">
+          <label>Backlogs</label>
+          <input type="number" id="backlogs" placeholder="e.g. 0" min="0" />
+        </div>
+        <div class="field">
+          <label>College Tier</label>
+          <select id="college_tier">
+            <option value="">Select tier</option>
+            <option>Tier 1</option>
+            <option>Tier 2</option>
+            <option>Tier 3</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Institution -->
+    <div class="card">
+      <div class="section-label">Institution & Geography</div>
+      <div class="grid">
+        <div class="field">
+          <label>Country</label>
+          <select id="country">
+            <option value="">Select country</option>
+            <option>India</option>
+            <option>USA</option>
+            <option>UK</option>
+            <option>Canada</option>
+            <option>Germany</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>University Ranking Band</label>
+          <select id="university_ranking_band">
+            <option value="">Select band</option>
+            <option>Top 100</option>
+            <option>100-300</option>
+            <option>300+</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Specialization</label>
+          <select id="specialization">
+            <option value="">Select specialization</option>
+            <option>AI/ML</option>
+            <option>Cloud</option>
+            <option>Cybersecurity</option>
+            <option>Data Science</option>
+            <option>Core CS</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Industry</label>
+          <select id="industry">
+            <option value="">Select industry</option>
+            <option>Tech</option>
+            <option>Finance</option>
+            <option>Healthcare</option>
+            <option>Consulting</option>
+            <option>Manufacturing</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skills & Internships -->
+    <div class="card">
+      <div class="section-label">Skills & Internships</div>
+      <div class="grid">
+        <div class="field">
+          <label>Aptitude Score</label>
+          <div class="range-wrap">
+            <span class="range-val" id="aptitude_val">50</span>
+            <input type="range" id="aptitude_score" min="0" max="100" value="50"
+              oninput="document.getElementById('aptitude_val').textContent = this.value" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Communication Score</label>
+          <div class="range-wrap">
+            <span class="range-val" id="comm_val">50</span>
+            <input type="range" id="communication_score" min="0" max="100" value="50"
+              oninput="document.getElementById('comm_val').textContent = this.value" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Internship Count</label>
+          <input type="number" id="internship_count" placeholder="e.g. 2" min="0" />
+        </div>
+        <div class="field">
+          <label>Internship Quality Score</label>
+          <div class="range-wrap">
+            <span class="range-val" id="quality_val">5</span>
+            <input type="range" id="internship_quality_score" min="0" max="10" step="0.1" value="5"
+              oninput="document.getElementById('quality_val').textContent = this.value" />
+          </div>
+        </div>
+      </div>
+
+      <br />
+      <button class="btn" id="submitBtn" onclick="predict()">Predict Placement & Salary</button>
+    </div>
+
+    <!-- Results -->
+    <div id="result"></div>
+
+  </div>
+
+  <script>
+    async function predict() {
+      const btn = document.getElementById('submitBtn');
+      const resultDiv = document.getElementById('result');
+
+      // Collect values
+      const payload = {
+        cgpa: parseFloat(document.getElementById('cgpa').value),
+        backlogs: parseInt(document.getElementById('backlogs').value),
+        college_tier: document.getElementById('college_tier').value,
+        country: document.getElementById('country').value,
+        university_ranking_band: document.getElementById('university_ranking_band').value,
+        internship_count: parseInt(document.getElementById('internship_count').value),
+        aptitude_score: parseFloat(document.getElementById('aptitude_score').value),
+        communication_score: parseFloat(document.getElementById('communication_score').value),
+        specialization: document.getElementById('specialization').value,
+        industry: document.getElementById('industry').value,
+        internship_quality_score: parseFloat(document.getElementById('internship_quality_score').value),
+      };
+
+      // Basic validation
+      for (const [key, val] of Object.entries(payload)) {
+        if (val === '' || val === null || val === undefined || (typeof val === 'number' && isNaN(val))) {
+          resultDiv.style.display = 'block';
+          resultDiv.innerHTML = `<div class="error-box">⚠ Please fill in all fields before predicting.</div>`;
+          return;
+        }
+      }
+
+      // Loading state
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Predicting...';
+      resultDiv.style.display = 'none';
+
+      try {
+        // Placement prediction
+        const placementRes = await fetch('/predict-placement', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const placementData = await placementRes.json();
+
+        // Salary prediction
+        const salaryRes = await fetch('/predict-salary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const salaryData = await salaryRes.json();
+
+        const isPlaced = placementData.placement_status === 'Placed';
+        const prob = (placementData.placement_probability * 100).toFixed(1);
+        const salary = salaryData.predicted_salary
+          ? `$${Number(salaryData.predicted_salary).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+          : '—';
+
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+          <div class="card">
+            <div class="section-label">Prediction Results</div>
+            <div class="result-grid">
+              <div class="result-box placement">
+                <div class="result-label">Placement Status</div>
+                <div class="result-value ${isPlaced ? 'placed' : 'not-placed'}">
+                  ${isPlaced ? 'Placed ✓' : 'Not Placed'}
+                </div>
+                <div class="result-sub">Confidence: ${prob}%</div>
+                <div class="prob-bar-wrap">
+                  <div class="prob-bar" style="width: ${prob}%"></div>
+                </div>
+              </div>
+              <div class="result-box salary">
+                <div class="result-label">Estimated Salary</div>
+                <div class="result-value salary-val">${salary}</div>
+                <div class="result-sub">${isPlaced ? 'Annual USD estimate' : 'No estimate — not placed'}</div>
+              </div>
+            </div>
+          </div>
+        `;
+
+      } catch (err) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `<div class="error-box">⚠ Could not connect to the prediction server. Make sure FastAPI is running.</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Predict Placement & Salary';
+      }
+    }
+  </script>
+</body>
+
+</html>
