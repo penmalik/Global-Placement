@@ -8,7 +8,7 @@ app = FastAPI()
 
 @app.get('/')
 def home():
-    return FileResponse('main.html')
+    return FileResponse('index.html')
 
 
 classifier = joblib.load('Models/placement_classifier.pkl')
