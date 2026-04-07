@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import pandas as pd
 import joblib
 
 app = FastAPI()
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get('/')
 def home():
     return FileResponse('index.html')
